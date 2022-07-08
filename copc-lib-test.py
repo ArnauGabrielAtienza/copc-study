@@ -70,9 +70,8 @@ def spatial_query():
     
 
 if __name__ == "__main__":
-    read_header()
-    read_copc_info()
-    find_node()
+    #read_header()
+    #read_copc_info()
+    #find_node()
     spatial_query()
-    print(dir(copc))
     reader.Close()
