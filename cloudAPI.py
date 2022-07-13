@@ -1,6 +1,6 @@
 import laspy.copc as lasp
 from concurrent.futures import ThreadPoolExecutor
-from itertools import repeat
+from typing import Tuple
 
 #CopcHelper helps in the process of reading a COPC file using laspy.
 #The files are stored in the cloud and we take advantage of range downloads.
@@ -11,7 +11,7 @@ from itertools import repeat
 #   s3:         boto3 with access to the cloud where the file is located
 class CopcHelper:
     #Initialize Reader.
-    def __init__(self, bucket, key, filename, s3):
+    def __init__(self, bucket: str, key: str, filename: str, s3):
         self.bucket = bucket
         self.key = key
         self.filename = filename
@@ -28,7 +28,7 @@ class CopcHelper:
         f.close()
 
     #Read the location and size of the rootpage.
-    def rootpage_location(self):
+    def rootpage_location(self) -> Tuple[int, int]:
         f = open(self.filename, "r+b")
         reader = lasp.CopcReader(f)
         root_offset = reader.copc_info.hierarchy_root_offset
@@ -55,7 +55,7 @@ class CopcHelper:
         f.close()
 
     #Get all existing keys.    
-    def get_all_keys(self):
+    def get_all_keys(self) -> list[lasp.VoxelKey]:
         f = open(self.filename, "r+b")
         reader = lasp.CopcReader(f)
         keys = reader.root_page.entries.keys()
@@ -63,7 +63,7 @@ class CopcHelper:
         return keys
 
     #Get the information of all nodes in a given level
-    def get_level_nodes(self, level):
+    def get_level_nodes(self, level: lasp.VoxelKey) -> list[lasp.Entry]:
         #Get the keys of the nodes in that level
         keys = self.get_all_keys()
         node_keys = []
@@ -81,7 +81,7 @@ class CopcHelper:
         return nodes
     
     #Get information of a single node
-    def get_node(self, key):
+    def get_node(self, key: lasp.VoxelKey) -> lasp.Entry:
         f = open(self.filename, "r+b")
         reader = lasp.CopcReader(f)
         node = reader.root_page.entries.get(key)
@@ -89,7 +89,7 @@ class CopcHelper:
         return node
     
     #Get the parent of a node given its key   
-    def get_parent(self, key):
+    def get_parent(self, key: lasp.VoxelKey) -> lasp.VoxelKey:
         parent = lasp.VoxelKey()
         parent.x = int((key.x)/2)
         parent.y = int((key.y)/2)
@@ -97,7 +97,7 @@ class CopcHelper:
         return parent
     
     #Get all children of a given node.
-    def get_children(self, parentkey):
+    def get_children(self, parentkey: lasp.VoxelKey) -> list[lasp.VoxelKey]:
         keys = []
         
         x = parentkey.x
@@ -145,13 +145,13 @@ class CopcHelper:
         return keys
     
     #Download and load the points of a set of nodes
-    def multiple_points_download(self, keys):
+    def multiple_points_download(self, keys: lasp.VoxelKey):
         with ThreadPoolExecutor() as executor:
             executor.map(self.load_points, keys)
     
     #Download a set of points in a node given its key. The load them into the local file
     #to be able to get them
-    def load_points(self, key):
+    def load_points(self, key: lasp.VoxelKey):
         #Download the node
         node = self.get_node(key)
         point_request = self.ibm_cos.get_object(Bucket=self.bucket, Key=self.key, Range='bytes={}-{}'.format(node.offset, node.offset + node.byte_size))
@@ -165,7 +165,7 @@ class CopcHelper:
         f.close()
     
     #Retrieve points from a node given its key. The node should be loaded into memory first.    
-    def get_points(self, key):
+    def get_points(self, key: lasp.VoxelKey) -> lasp.ScaleAwarePointRecord:
         f = open(self.filename, "r+b")
         reader = lasp.CopcReader(f)
         points = reader._fetch_and_decrompress_points_of_nodes([reader.root_page.entries.get(key)])
@@ -173,7 +173,7 @@ class CopcHelper:
         return points
     
     #Get the neighbours of a given node at the deepest level (4).
-    def get_smallest_neighbours(self, key):
+    def get_smallest_neighbours(self, key: lasp.VoxelKey) -> list[lasp.VoxelKey]:
         neighbours = []
         
         all_keys = list(self.get_all_keys())
