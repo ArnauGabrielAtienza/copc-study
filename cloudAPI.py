@@ -1,4 +1,6 @@
 import laspy.copc as lasp
+from concurrent.futures import ThreadPoolExecutor
+from itertools import repeat
 
 #CopcHelper helps in the process of reading a COPC file using laspy.
 #The files are stored in the cloud and we take advantage of range downloads.
@@ -141,6 +143,11 @@ class CopcHelper:
                 keys.append(key)
             
         return keys
+    
+    #Download and load the points of a set of nodes
+    def multiple_points_download(self, keys):
+        with ThreadPoolExecutor() as executor:
+            executor.map(self.load_points, keys)
     
     #Download a set of points in a node given its key. The load them into the local file
     #to be able to get them
